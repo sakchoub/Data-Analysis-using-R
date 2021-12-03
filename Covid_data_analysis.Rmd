@@ -1,0 +1,160 @@
+---
+title: "Covid-19 Data Analysis of India "
+author: "Pankaj & Sakshi"
+date: "12/01/2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#### This data is taken from Bing COVID-19 Tracker (www.bing.com/covid). Bing COVID-19 data includes confirmed, fatal, and recovered cases from all regions. The data is collected from multiple trusted, reliable sources, including the World Health Organization (WHO), Centers for Disease Control and Prevention (CDC), national and state public health departments, BNO News, 24/7 Wall St., and Wikipedia.
+
+
+##### Importing Data and packages
+```{r message=FALSE}
+# add packages you need for this assignment
+library("xlsx")
+library(tidyverse)  # includes tibbles, ggplot2, dyplr, and more. 
+```
+
+```{r}
+Demo2<- read.csv("~/Desktop/Demo2.csv") 
+ind<- read.csv("~/Desktop/ind.csv") 
+totaldata <- read.xlsx("~/Downloads/Indiaset.xlsx", 1, header=TRUE)
+```
+
+```{r}
+str(Demo2) #Structure of dataset
+```
+```{r}
+plot1 <- 
+  ggplot(totaldata, aes(x=Date)) + 
+  geom_line(aes(y = Confirmed.Change, color = "Confirmed.Change")) + 
+  geom_line(aes(y = Revovered.Change, color="Revovered.Change")) +
+  geom_line(aes(y = Deaths.Changed, color="Deaths.Changed"))
+
+print(plot1 +ggtitle("Confirmed, Recovered and Deaths rate comparison on all India dataset")+ labs(y=" ", x = "Timeline"))
+```
+
+```{r}
+ggplot(data = Demo2, mapping = aes(x = Admin.Region.1, y = Confirmed.Change)) +
+  geom_boxplot(aes(fill = Admin.Region.1))
+```
+
+
+
+```{r}
+plot2 <- ggplot(data = Demo2, aes(x = Deaths.Changed)) +
+  geom_histogram(aes(fill = Admin.Region.1),bins = 30)
+print(plot2 +ggtitle("Count of Deaths distributed among states")+ labs(y="Count", x = "Deaths Changed"))
+```
+
+```{r}
+plot3 <- ggplot(data = Demo2, mapping = aes(x = Confirmed.Change)) + 
+  geom_line(aes(y = Revovered.Change, color = Admin.Region.1)) 
+print(plot3 +ggtitle("CONFIRMED Vs RECOVERED")+ labs(y="Confirmed Cases", x = "Recovered"))
+```
+
+```{r}
+plot4 <-  ggplot(data = Demo2) +
+  geom_point(mapping = aes(x = Deaths.Changed, y = Confirmed.Change,colour = Admin.Region.1))
+print(plot4 +ggtitle("Deaths Vs Confirmed")+ labs(y="Confirmed", x = "Deaths"))
+```
+
+
+```{r}
+plot5 <-ggplot(data = Demo2) + 
+  geom_point(mapping = aes(x = Population.Density, y = Confirmed.Change,color = Admin.Region.1))
+print(plot5 +ggtitle("Population Density Vs Confirmed Change")+ labs(y="Confirmed", x = "Population Density (sq/miles)"))
+```
+
+##### Hypothesis Testing - 
+ * This Hypothesis testing is done on statement that the average number of Confirmed changed cases in the duration of January 2020 - October 2020 is same as Confirmed Changed cases in January 2021 - October 2021.
+ * null hypothesis, denoted by $H_0$
+
+ * alternative hypothesis, denoted by $H_1$
+ * Assuming variance is equal.
+
+In our binomial example, we may state
+
+\begin{align*}
+H_0: \mu_w1=\mu_w2,\\
+H_1: \mu_w1 \ne \mu_w2
+\end{align*}
+
+```{r}
+wave1 <- ind[1:10,]  #Data from Jan 2020 to Oct 2020
+wave2 <- ind[13:22,] #Data from Jan 2021 to Oct 2021
+```
+
+```{r}
+w1 <- wave1$Confirmed.Change
+w2 <- wave2$Confirmed.Change
+t.test(w1,w2, var.equal = TRUE, conf.level = .95)
+```
+>In the above test we used t-test to compare mean of two sample sets with 95% confidence Interval and the resulted P-value is 0.1954 which is comparitively very large to Alpha (0.05). Since the P-value is larger than alpha we will accept the $H_0$ which stated that both means are equal.
+
+
+### Regression
+```{r}
+library(ISLR)
+data(Demo2)
+i <- sample(2, nrow(Demo2), replace=TRUE, prob=c(0.8, 0.2))
+Demo2Training <- Demo2[i==1,]
+Demo2Test <- Demo2[i==2,]
+pairs(Demo2Training[,3:8],lower.panel = NULL)
+```
+
+> From the above scatterplot matrix we can determine that "Recovered" has direct relationship with "Confirmed cases" and "Deaths".
+
+```{r}
+library(MASS)
+# Create a null model 
+intercept_only <- lm(Confirmed ~ 1, data=Demo2Training[,3:8])
+# Create a full model
+all <- lm(Confirmed~., data=Demo2Training[,3:8])
+# perform forward step-wise regression
+forward <- stepAIC (intercept_only, direction='forward',scope = formula(all))
+summary(forward)
+```
+
+```{r}
+data(Demo2)
+fitlm <- lm(Confirmed.Change ~ Revovered.Change, data=Demo2)
+summary(fitlm)
+```
+
+##### The above result shows that
+
+```{r}
+fitlm <- lm(Demo2Training$Confirmed.Change~ Demo2Training$Revovered.Change, data=Demo2Training[,3:8])
+summary(fitlm)
+plot(Demo2Training$Confirmed.Change, Demo2Training$Revovered.Change)
+abline(fitlm, col="red")
+```
+
+
+#### Checking MAE and MSE
+
+```{r}
+library(MLmetrics)
+ypred <-predict(object = fitlm, newdata = Demo2Test[,3:8])
+summary(ypred)
+MAE(y_pred = ypred, y_true = Demo2Test$Confirmed.Change)
+MSE(y_pred = ypred, y_true = Demo2Test$Confirmed.Change)
+
+```
+> The above results shows MAE(Mean Absolute Error) of 2474.65 and MSE(Mean Squared Error) of 30067300.
+
+
+
+## Thankyou
+
+
+
+
+
+
+
+
+
